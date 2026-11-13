@@ -14,6 +14,11 @@ def load_trip_stops(stop_times_path, trip_id):
     return sorted(trip_stops, key=lambda row: int(row["stop_sequence"]))
 
 
+def time_to_seconds(time_text):
+    hours, minutes, seconds = map(int, time_text.split(":"))
+    return hours * 3600 + minutes * 60 + seconds
+
+
 def main():
     project_root = Path(__file__).resolve().parent.parent
     feed_folder = project_root / "data" / "raw" / "gtfs"
@@ -34,6 +39,17 @@ def main():
         stop_id = row["stop_id"]
         stop_name = stops_by_id[stop_id]["stop_name"]
         print(f"{position}. {stop_name}")
+
+    if len(trip_stops) >= 2:
+        first_stop = trip_stops[0]
+        second_stop = trip_stops[1]
+        departure = time_to_seconds(first_stop["departure_time"])
+        arrival = time_to_seconds(second_stop["arrival_time"])
+        ride_seconds = arrival - departure
+
+        from_name = stops_by_id[first_stop["stop_id"]]["stop_name"]
+        to_name = stops_by_id[second_stop["stop_id"]]["stop_name"]
+        print(f"{from_name} -> {to_name}: {ride_seconds} seconds")
 
 
 if __name__ == "__main__":
