@@ -20,6 +20,18 @@ def time_to_seconds(time_text):
     return hours * 3600 + minutes * 60 + seconds
 
 
+def build_trip_graph(trip_stops):
+    graph = {stop["stop_id"]: [] for stop in trip_stops}
+    for current_stop, next_stop in pairwise(trip_stops):
+        from_id = current_stop["stop_id"]
+        to_id = next_stop["stop_id"]
+        departure = time_to_seconds(current_stop["departure_time"])
+        arrival = time_to_seconds(next_stop["arrival_time"])
+        ride_seconds = arrival - departure
+        graph[from_id].append((to_id, ride_seconds))
+    return graph
+
+
 def main():
     project_root = Path(__file__).resolve().parent.parent
     feed_folder = project_root / "data" / "raw" / "gtfs"
@@ -41,14 +53,12 @@ def main():
         stop_name = stops_by_id[stop_id]["stop_name"]
         print(f"{position}. {stop_name}")
 
-    for current_stop, next_stop in pairwise(trip_stops):
-        departure = time_to_seconds(current_stop["departure_time"])
-        arrival = time_to_seconds(next_stop["arrival_time"])
-        ride_seconds = arrival - departure
-
-        from_name = stops_by_id[current_stop["stop_id"]]["stop_name"]
-        to_name = stops_by_id[next_stop["stop_id"]]["stop_name"]
-        print(f"{from_name} -> {to_name}: {ride_seconds} seconds")
+    graph = build_trip_graph(trip_stops)
+    for from_id, rides in graph.items():
+        from_name = stops_by_id[from_id]["stop_name"]
+        for to_id, ride_seconds in rides:
+            to_name = stops_by_id[to_id]["stop_name"]
+            print(f"{from_name} -> {to_name}: {ride_seconds} seconds")
 
 
 if __name__ == "__main__":
