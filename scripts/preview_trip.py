@@ -1,4 +1,5 @@
 import csv
+from itertools import pairwise
 from pathlib import Path
 
 from preview_stops import load_stops
@@ -40,15 +41,13 @@ def main():
         stop_name = stops_by_id[stop_id]["stop_name"]
         print(f"{position}. {stop_name}")
 
-    if len(trip_stops) >= 2:
-        first_stop = trip_stops[0]
-        second_stop = trip_stops[1]
-        departure = time_to_seconds(first_stop["departure_time"])
-        arrival = time_to_seconds(second_stop["arrival_time"])
+    for current_stop, next_stop in pairwise(trip_stops):
+        departure = time_to_seconds(current_stop["departure_time"])
+        arrival = time_to_seconds(next_stop["arrival_time"])
         ride_seconds = arrival - departure
 
-        from_name = stops_by_id[first_stop["stop_id"]]["stop_name"]
-        to_name = stops_by_id[second_stop["stop_id"]]["stop_name"]
+        from_name = stops_by_id[current_stop["stop_id"]]["stop_name"]
+        to_name = stops_by_id[next_stop["stop_id"]]["stop_name"]
         print(f"{from_name} -> {to_name}: {ride_seconds} seconds")
 
 
