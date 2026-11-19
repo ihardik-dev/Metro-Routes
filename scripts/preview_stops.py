@@ -24,9 +24,6 @@ def main():
         print(f"{stop['stop_id']}: {stop['stop_name']}")
     print(f"Loaded {len(stops_by_id)} stops.")
 
-    example_stop = stops_by_id.get("176")
-    if example_stop is not None:
-        print(f"Lookup 176: {example_stop['stop_name']}")
 
 
 if __name__ == "__main__":
