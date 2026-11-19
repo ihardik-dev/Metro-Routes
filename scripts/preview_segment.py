@@ -2,6 +2,7 @@ import csv
 from pathlib import Path
 from statistics import median_low
 
+from preview_stops import load_stops
 from preview_trip import build_trip_graph
 
 
@@ -20,28 +21,33 @@ def load_route_trips(feed_folder, route_id):
     return trips
 
 
-def segment_samples(trips, from_id, to_id):
-    samples = []
+def collect_segment_samples(trips):
+    samples_by_segment = {}
     for trip_stops in trips.values():
         ordered_stops = sorted(trip_stops, key=lambda row: int(row["stop_sequence"]))
         graph = build_trip_graph(ordered_stops)
-        for destination, seconds in graph.get(from_id, []):
-            if destination == to_id:
-                samples.append(seconds)
-    return samples
+        for from_id, rides in graph.items():
+            for to_id, seconds in rides:
+                segment = (from_id, to_id)
+                samples_by_segment.setdefault(segment, []).append(seconds)
+    return samples_by_segment
 
 
 def main():
     feed_folder = Path(__file__).resolve().parent.parent / "data" / "raw" / "gtfs"
-    trips = load_route_trips(feed_folder, route_id="0")
-    samples = segment_samples(trips, from_id="21", to_id="20")
-    if not samples:
-        raise SystemExit("No ride times found for this segment.")
+    route_id = "0"
+    trips = load_route_trips(feed_folder, route_id)
+    samples_by_segment = collect_segment_samples(trips)
+    if not samples_by_segment:
+        raise SystemExit(f"No ride times found for route {route_id}.")
 
-    estimate = median_low(samples)
-    print(f"Rithala -> Rohini West: {len(samples)} scheduled samples")
-    print(f"Samples in seconds: {samples}")
-    print(f"Estimated ride time: {estimate} seconds")
+    stops_by_id = load_stops(feed_folder / "stops.txt")
+    print(f"Route {route_id}: {len(samples_by_segment)} segments from {len(trips)} trips")
+    for (from_id, to_id), samples in samples_by_segment.items():
+        from_name = stops_by_id[from_id]["stop_name"]
+        to_name = stops_by_id[to_id]["stop_name"]
+        estimate = median_low(samples)
+        print(f"{from_name} -> {to_name}: {estimate} seconds ({len(samples)} samples)")
 
 
 if __name__ == "__main__":
