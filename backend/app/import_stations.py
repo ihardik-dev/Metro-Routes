@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 from backend.app.database import SessionLocal
-from backend.app.models import Station , Line
+from backend.app.models import Station , Line, StationLine
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -60,7 +60,33 @@ def import_lines() -> int:
 
     return len(lines)
 
+
+def import_station_lines() -> int:
+    route_id_by_trip_id = {}
+
+    with TRIPS_FILE.open(newline="", encoding="utf-8") as trips_file:
+        trips_reader = csv.DictReader(trips_file)
+        for trip in trips_reader:
+            route_id_by_trip_id[trip["trip_id"]] = trip["route_id"]
+
+    station_line_pairs = set()
+
+    with STOP_TIMES_FILE.open(newline="", encoding="utf-8") as stop_times_file:
+        stop_times_reader = csv.DictReader(stop_times_file)
+        for stop_time in stop_times_reader:
+            route_id = route_id_by_trip_id[stop_time["trip_id"]]
+            station_line_pairs.add((stop_time["stop_id"], route_id))
+
+    with SessionLocal() as session:
+        for station_id, line_id in station_line_pairs:
+            session.merge(StationLine(station_id=station_id, line_id=line_id))
+        session.commit()
+
+    return len(station_line_pairs)
+
+
 if __name__ == "__main__":
     imported_count = import_stations()
     print(f"Imported or updated {imported_count} stations.")
     print(f"Imported or updated {import_lines()} lines.")
+    print(f"Imported or updated {import_station_lines()} station-line memberships.")
