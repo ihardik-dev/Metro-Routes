@@ -1,17 +1,12 @@
-import os
-
 from fastapi import FastAPI
 from fastapi import HTTPException
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+
+from backend.app.database import database_engine
 
 
 app = FastAPI(title="Delhi Metro Journey Planner")
-database_url = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg://metro_user:metro_local_password@127.0.0.1:5433/metro_routes",
-)
-database_engine = create_engine(database_url, pool_pre_ping=True)
 
 
 @app.get("/health")
