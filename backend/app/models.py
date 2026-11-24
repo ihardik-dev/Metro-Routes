@@ -5,7 +5,6 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
-    ForeignKeyConstraint,
     Integer,
     String,
     UniqueConstraint,
@@ -87,29 +86,6 @@ class TransferEdge(Base):
         Integer, nullable=False, default=420, server_default="420"
     )
     source: Mapped[str] = mapped_column(String(500), nullable=False)
-
-
-class TransferOverride(Base):
-    __tablename__ = "transfer_overrides"
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["start_station_id", "end_station_id"],
-            [
-                "transfer_edges.start_station_id",
-                "transfer_edges.end_station_id",
-            ],
-            name="fk_transfer_override_edge",
-        ),
-        CheckConstraint(
-            "duration_seconds > 0",
-            name="ck_transfer_override_duration_positive",
-        ),
-    )
-
-    start_station_id: Mapped[str] = mapped_column(String(50), primary_key=True)
-    end_station_id: Mapped[str] = mapped_column(String(50), primary_key=True)
-    duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
-    reason: Mapped[str] = mapped_column(String(300), nullable=False)
 
 
 class User(Base):
