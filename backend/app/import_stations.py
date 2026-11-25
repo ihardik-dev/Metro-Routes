@@ -7,7 +7,8 @@ from statistics import median
 from sqlalchemy.dialects.postgresql import insert
 
 from backend.app.database import SessionLocal
-from backend.app.models import Line, RideConnection, Station, StationLine
+from backend.app.models import Line, RideConnection, Station, StationLine, TransferEdge
+from transfers import TRANSFERS
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -163,10 +164,35 @@ def import_ride_connections() -> int:
     return len(durations_by_connection)
 
 
+def import_transfer_edges() -> int:
+    transfer_edges = []
+
+    for station_a, station_b, _line_a, _line_b, duration_seconds in TRANSFERS:
+        for start_station_id, end_station_id in (
+            (station_a, station_b),
+            (station_b, station_a),
+        ):
+            transfer_edges.append(
+                TransferEdge(
+                    start_station_id=str(start_station_id),
+                    end_station_id=str(end_station_id),
+                    duration_seconds=duration_seconds,
+                    source="project_estimate",
+                )
+            )
+
+    with SessionLocal() as session:
+        for transfer_edge in transfer_edges:
+            session.merge(transfer_edge)
+        session.commit()
+
+    return len(transfer_edges)
+
+
 if __name__ == "__main__":
     imported_count = import_stations()
     print(f"Imported or updated {imported_count} stations.")
     print(f"Imported or updated {import_lines()} lines.")
     print(f"Imported or updated {import_station_lines()} station-line memberships.")
     print(f"Imported or updated {import_ride_connections()} ride connections.")
-    print(f"Imported or updated {import_ride_connections()} ride connections.")
+    print(f"Imported or updated {import_transfer_edges()} transfer edges.")
