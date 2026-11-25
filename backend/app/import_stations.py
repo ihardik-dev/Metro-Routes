@@ -4,11 +4,12 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import median
 
+from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 
 from backend.app.database import SessionLocal
 from backend.app.models import Line, RideConnection, Station, StationLine, TransferEdge
-from transfers import TRANSFERS
+from transfers import GREEN_RIDES, GREEN_ROUTE_IDS_BY_DIRECTION, TRANSFERS
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -189,6 +190,50 @@ def import_transfer_edges() -> int:
     return len(transfer_edges)
 
 
+def import_green_rides() -> int:
+    green_route_ids = set()
+    green_ride_rows = []
+
+    for start_station_id, end_station_id, _line, duration_seconds in GREEN_RIDES:
+        route_ids = GREEN_ROUTE_IDS_BY_DIRECTION[(start_station_id, end_station_id)]
+        for route_id in route_ids:
+            green_route_ids.add(route_id)
+            green_ride_rows.append(
+                {
+                    "start_station_id": str(start_station_id),
+                    "end_station_id": str(end_station_id),
+                    "line_id": str(route_id),
+                    "duration_seconds": duration_seconds,
+                }
+            )
+
+    with SessionLocal() as session:
+        for route_id in green_route_ids:
+            session.merge(StationLine(station_id="176", line_id=str(route_id)))
+
+        for start_station_id, end_station_id, route_ids in (
+            (32, 33, (25, 26)),
+            (33, 32, (7, 8)),
+        ):
+            session.execute(
+                delete(RideConnection).where(
+                    RideConnection.start_station_id == str(start_station_id),
+                    RideConnection.end_station_id == str(end_station_id),
+                    RideConnection.line_id.in_([str(route_id) for route_id in route_ids]),
+                )
+            )
+
+        statement = insert(RideConnection).values(green_ride_rows)
+        statement = statement.on_conflict_do_update(
+            constraint="uq_ride_connection_direction_line",
+            set_={"duration_seconds": statement.excluded.duration_seconds},
+        )
+        session.execute(statement)
+        session.commit()
+
+    return len(green_ride_rows)
+
+
 if __name__ == "__main__":
     imported_count = import_stations()
     print(f"Imported or updated {imported_count} stations.")
@@ -196,3 +241,4 @@ if __name__ == "__main__":
     print(f"Imported or updated {import_station_lines()} station-line memberships.")
     print(f"Imported or updated {import_ride_connections()} ride connections.")
     print(f"Imported or updated {import_transfer_edges()} transfer edges.")
+    print(f"Imported or updated {import_green_rides()} Punjabi Bagh Green rides.")

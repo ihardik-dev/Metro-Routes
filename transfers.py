@@ -17,6 +17,13 @@ GREEN_RIDES = [
     (176, 32, "GREEN", 90),
 ]
 
+GREEN_ROUTE_IDS_BY_DIRECTION = {
+    (32, 176): (25, 26),
+    (176, 33): (25, 26),
+    (33, 176): (7, 8),
+    (176, 32): (7, 8),
+}
+
 def add_transfers(graph):
     for station_a, station_b, line_a, line_b, duration in TRANSFERS:
         graph.setdefault(station_a, {})
